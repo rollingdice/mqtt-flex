@@ -20,6 +20,9 @@
 #include "cgiwifi.h"
 #include "stdout.h"
 #include "auth.h"
+#include "mqtt.h"
+
+MQTT_Client mqttClient;
 
 //Function that tells the authentication system what users/passwords live on the system.
 //This is disabled in the default build; if you want to try it, enable the authBasic line in
