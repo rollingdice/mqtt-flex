@@ -20,6 +20,7 @@ flash as a binary. Also handles the hit counter on the main page.
 #include "httpd.h"
 #include "cgi.h"
 #include "io.h"
+#include "gpio.h"
 #include <ip_addr.h>
 #include "espmissingincludes.h"
 
@@ -65,6 +66,19 @@ void ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) 
 	httpdSend(connData, buff, -1);
 }
 
+void ICACHE_FLASH_ATTR tplSwitch(HttpdConnData *connData, char *token, void **arg)
+{
+	char buff[128];
+	char inputstate;
+	if (token==NULL) return;
+
+	if (os_strcmp(token, "inputstate")==0) {
+		inputstate = GPIO_INPUT_GET (0);
+		os_sprintf(buff, "%s", inputstate?"On":"Off");
+	}
+	httpdSend(connData, buff, -1);
+}
+
 static long hitCounter=0;
 
 //Template code for the counter on the index page.
@@ -73,7 +87,7 @@ void ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **a
 	if (token==NULL) return;
 
 	if (os_strcmp(token, "counter")==0) {
-		hitCounter++;
+		GPIO_INPUT_GET (0);
 		os_sprintf(buff, "%ld", hitCounter);
 	}
 	httpdSend(connData, buff, -1);

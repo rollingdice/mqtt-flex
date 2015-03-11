@@ -1,5 +1,3 @@
-
-
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
@@ -20,9 +18,8 @@
 #include "cgiwifi.h"
 #include "stdout.h"
 #include "auth.h"
-#include "mqtt.h"
-
-MQTT_Client mqttClient;
+#include "user_mqtt.h"
+#include "user_interface.h"
 
 //Function that tells the authentication system what users/passwords live on the system.
 //This is disabled in the default build; if you want to try it, enable the authBasic line in
@@ -58,6 +55,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/led.tpl", cgiEspFsTemplate, tplLed},
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
 	{"/led.cgi", cgiLed, NULL},
+	{"/input.tpl", cgiEspFsTemplate, tplSwitch},
 
 	//Routines to make the /wifi URL and everything beneath it work.
 
@@ -82,4 +80,5 @@ void user_init(void) {
 	ioInit();
 	httpdInit(builtInUrls, 80);
 	os_printf("\nReady\n");
+	mqtt_init();
 }

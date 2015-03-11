@@ -17,6 +17,7 @@ XTENSA_TOOLS_ROOT ?= /opt/Espressif/crosstool-NG/builds/xtensa-lx106-elf/bin
 #Extra Tensilica includes from the ESS VM
 SDK_EXTRA_INCLUDES ?= /opt/Espressif/include
 SDK_EXTRA_LIBS ?= /opt/Espressif/arch/lib
+SDK_EXTRA_LIB += lib
 
 # base directory of the ESP8266 SDK package, absolute
 SDK_BASE	?= /opt/Espressif/ESP8266_SDK
@@ -41,16 +42,15 @@ EXTRA_INCDIR	= include \
 		$(SDK_EXTRA_INCLUDES)
 
 # libraries used in this project, mainly provided by the SDK
-LIBS		= c gcc hal phy pp net80211 wpa main lwip
+LIBS		= c gcc hal phy pp net80211 wpa main lwip ssl
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
-		-Wno-error=comment \
+CFLAGS		= -Os -ggdb -std=c99 -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH \
 		-Wno-address
 
 # linker flags used to generate the main object file
-LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -L$(SDK_EXTRA_LIBS)
+LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -L$(SDK_EXTRA_LIBS) lib/libmqtt.a
 
 # linker script used for the above linkier step
 LD_SCRIPT	= eagle.app.v6.ld
@@ -71,7 +71,7 @@ FW_FILE_2_ARGS	= -es .irom0.text $@ -ec
 CC		:= $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-gcc
-
+CXX		:= $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-g++
 
 
 ####
@@ -84,7 +84,9 @@ SDK_LIBDIR	:= $(addprefix $(SDK_BASE)/,$(SDK_LIBDIR))
 SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
 
 SRC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
+#SRC 	+= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.cpp))
 OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC))
+OBJ		+= $(patsubst %.cpp,$(BUILD_BASE)/%.o,$(SRC))
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 TARGET_OUT	:= $(addprefix $(BUILD_BASE)/,$(TARGET).out)
@@ -108,12 +110,16 @@ Q := @
 vecho := @echo
 endif
 
+vpath %.cpp $(SRC_DIR)
 vpath %.c $(SRC_DIR)
 
 define compile-objects
 $1/%.o: %.c
 	$(vecho) "CC $$<"
 	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS)  -c $$< -o $$@
+#$1/%.o: %.cpp
+#	$(vecho) "CC $$<"
+#	$(Q) $(CXX) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS)  -c $$< -o $$@
 endef
 
 .PHONY: all checkdirs clean
@@ -130,7 +136,7 @@ $(FW_FILE_2): $(TARGET_OUT) firmware
 
 $(TARGET_OUT): $(APP_AR)
 	$(vecho) "LD $@"
-	$(Q) $(LD) -L$(SDK_LIBDIR) $(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
+	$(Q) $(LD) -L$(SDK_LIBDIR) $(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group lib/libmqtt.a -lssl -o $@
 
 $(APP_AR): $(OBJ)
 	$(vecho) "AR $@"
